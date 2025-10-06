@@ -242,7 +242,9 @@ class Dataset_Custom(Dataset):
         '''
         df_raw.columns: ['date', ...(other features), target feature]
         '''
+        print(df_raw.columns)
         cols = list(df_raw.columns)
+
         cols.remove(self.target)
         cols.remove('date')
         df_raw = df_raw[['date'] + cols + [self.target]]
@@ -746,3 +748,212 @@ class UEAloader(Dataset):
 
     def __len__(self):
         return len(self.all_IDs)
+
+
+class StockDataset(Dataset):
+    def __init__(self, args, root_path, flag='train', size=None,
+                 features='S', data_path='nepse_data.csv',
+                 target='Close', scale=True, timeenc=0, freq='d'):
+        """
+        Custom dataset for stock data (NEPSE)
+        Args:
+            args: argument object containing model configurations
+            root_path: root directory of the data file
+            flag: 'train', 'val', or 'test'
+            size: [seq_len, label_len, pred_len]
+            features: 'S' for single feature, 'M' for multiple features, 'MS' for multiple features with target
+            data_path: path to the CSV file
+            target: target column name (default: 'Close')
+            scale: whether to apply StandardScaler
+            timeenc: 0 or 1 for different time encoding methods
+            freq: frequency of the time series (default: 'd' for daily)
+        """
+        self.args = args
+        # Set sequence lengths
+        if size is None:
+            self.seq_len = 96
+            self.label_len = 48
+            self.pred_len = 96
+        else:
+            self.seq_len = size[0]
+            self.label_len = size[1]
+            self.pred_len = size[2]
+
+        # Validate flag
+        assert flag in ['train', 'test', 'val']
+        type_map = {'train': 0, 'val': 1, 'test': 2}
+        self.set_type = type_map[flag]
+
+        self.features = features
+        self.target = target
+        self.scale = scale
+        self.timeenc = timeenc
+        self.freq = freq
+
+        self.root_path = root_path
+        self.data_path = data_path
+        self.__read_data__()
+
+    def __read_data__(self):
+        """Read and preprocess stock data"""
+        self.scaler = StandardScaler()
+        df_raw = pd.read_csv(os.path.join(self.root_path, self.data_path))
+
+        # Reorder columns: ['Date', ...(other features), target feature]
+        print(f"Original columns: {df_raw.columns.tolist()}")
+
+        # Strip whitespace from column names
+        df_raw.columns = df_raw.columns.str.strip()
+
+        cols = list(df_raw.columns)
+
+        # Handle case where 'Date' might be capitalized differently
+        date_col = next((col for col in cols if col.lower() == 'date'), None)
+        if date_col is None:
+            raise ValueError(f"Date column not found. Available columns: {cols}")
+
+        # Check if target column exists
+        if self.target not in cols:
+            raise ValueError(f"Target column '{self.target}' not found. Available columns: {cols}")
+
+        # Remove target and date from cols
+        cols_copy = cols.copy()
+        cols_copy.remove(self.target)
+        cols_copy.remove(date_col)
+
+        # Reorder: date, other features, target
+        df_raw = df_raw[[date_col] + cols_copy + [self.target]]
+        df_raw.rename(columns={date_col: 'date'}, inplace=True)
+
+        # Split data: 70% train, 15% validation, 15% test
+        num_train = int(len(df_raw) * 0.7)
+        num_test = int(len(df_raw) * 0.15)
+        num_vali = len(df_raw) - num_train - num_test
+
+        print(f"Data split - Train: {num_train}, Val: {num_vali}, Test: {num_test}")
+
+        # Define borders for each split
+        border1s = [0, num_train - self.seq_len, len(df_raw) - num_test - self.seq_len]
+        border2s = [num_train, num_train + num_vali, len(df_raw)]
+        border1 = border1s[self.set_type]
+        border2 = border2s[self.set_type]
+
+        # Select features based on configuration
+        if self.features == 'M' or self.features == 'MS':
+            # Multiple features: all columns except date
+            cols_data = df_raw.columns[1:]
+            df_data = df_raw[cols_data]
+        elif self.features == 'S':
+            # Single feature: only target column
+            df_data = df_raw[[self.target]]
+
+        # Apply scaling
+        if self.scale:
+            train_data = df_data[border1s[0]:border2s[0]]
+            self.scaler.fit(train_data.values)
+            data = self.scaler.transform(df_data.values)
+        else:
+            data = df_data.values
+
+        # Create time stamps
+        df_stamp = df_raw[['date']][border1:border2]
+        df_stamp['date'] = pd.to_datetime(df_stamp.date)
+
+        if self.timeenc == 0:
+            # Manual time encoding
+            df_stamp['month'] = df_stamp.date.apply(lambda row: row.month, 1)
+            df_stamp['day'] = df_stamp.date.apply(lambda row: row.day, 1)
+            df_stamp['weekday'] = df_stamp.date.apply(lambda row: row.weekday(), 1)
+            df_stamp['hour'] = df_stamp.date.apply(lambda row: row.hour, 1)
+            data_stamp = df_stamp.drop(['date'], axis=1).values
+        elif self.timeenc == 1:
+            # Automated time encoding using time_features
+            data_stamp = time_features(pd.to_datetime(df_stamp['date'].values), freq=self.freq)
+            data_stamp = data_stamp.transpose(1, 0)
+
+        # Set data for the current split
+        self.data_x = data[border1:border2]
+        self.data_y = data[border1:border2]
+
+        # Apply data augmentation for training set
+        if self.set_type == 0 and hasattr(self.args, 'augmentation_ratio') and self.args.augmentation_ratio > 0:
+            self.data_x, self.data_y, augmentation_tags = run_augmentation_single(
+                self.data_x, self.data_y, self.args
+            )
+
+        self.data_stamp = data_stamp
+
+        print(
+            f"Data prepared - X shape: {self.data_x.shape}, Y shape: {self.data_y.shape}, Stamp shape: {self.data_stamp.shape}")
+
+    def __getitem__(self, index):
+        """Get a single sample"""
+        s_begin = index
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len
+        r_end = r_begin + self.label_len + self.pred_len
+
+        seq_x = self.data_x[s_begin:s_end]
+        seq_y = self.data_y[r_begin:r_end]
+        seq_x_mark = self.data_stamp[s_begin:s_end]
+        seq_y_mark = self.data_stamp[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+
+    def __len__(self):
+        """Return the number of samples"""
+        return len(self.data_x) - self.seq_len - self.pred_len + 1
+
+    def inverse_transform(self, data):
+        """Inverse transform scaled data back to original scale"""
+        return self.scaler.inverse_transform(data)
+
+
+def _get_data(args, flag, root_path='./data/stock/', data_path='nepse_data.csv'):
+    """
+    Helper function to create dataset and dataloader
+    Args:
+        args: argument object with model configurations
+        flag: 'train', 'val', or 'test'
+        root_path: root directory of data
+        data_path: CSV file name
+    Returns:
+        data_set: StockDataset instance
+        data_loader: DataLoader instance
+    """
+    size = [args.seq_len, args.label_len, args.pred_len]
+
+    # Create dataset
+    data_set = StockDataset(
+        args=args,
+        root_path=root_path,
+        flag=flag,
+        size=size,
+        features=args.features,
+        data_path=data_path,
+        target=args.target,
+        scale=True,
+        timeenc=args.timeenc,
+        freq=args.freq
+    )
+
+    # Set batch size and shuffle
+    if flag == 'train':
+        batch_size = args.batch_size
+        shuffle = True
+        drop_last = True
+    else:
+        batch_size = args.batch_size
+        shuffle = False
+        drop_last = False
+
+    # Create dataloader
+    data_loader = DataLoader(
+        data_set,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=args.num_workers,
+        drop_last=drop_last
+    )
+
+    return data_set, data_loader
