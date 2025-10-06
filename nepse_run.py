@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
     # data loader
     parser.add_argument('--data', type=str, default='NEPSE', help='dataset type')
-    parser.add_argument('--root_path', type=str, default='./kaggle/working/Time-Series-Library/dataset/nepse/', help='root path of the data file')
+    parser.add_argument('--root_path', type=str, default='./Time-Series-Library/dataset/nepse/', help='root path of the data file')
     parser.add_argument('--data_path', type=str, default='nepse.csv', help='data file')
     parser.add_argument('--features', type=str, default='M',
                         help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
