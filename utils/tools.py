@@ -90,10 +90,10 @@ def visual(true, preds=None, name='./pic/test.png'):
         plt.plot(preds, label='Prediction', linewidth=2)
     plt.plot(true, label='GroundTruth', linewidth=2)
     plt.legend()
-    plt.savefig(name, bbox_inches='tight')
     # Show the plot
     print('Plotting results figure ...')
     plt.show()
+    plt.savefig(name, bbox_inches='tight')
 
 
 def adjustment(gt, pred):

@@ -10,6 +10,7 @@ from exp.exp_classification import Exp_Classification
 from utils.print_args import print_args
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 
 def create_timesnet_args(**overrides):
     # Create Namespace with all default values from the parser
@@ -250,13 +251,25 @@ def run_experiment(**arg_overrides):
         exp.train(setting)
         # Testing
         print(f'>>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-        exp.test(setting)
+        metrics, gt, preds = exp.test(setting)
+        plot_graph(gt, preds )
+
         # Clear cache
         if args.gpu_type == 'mps':
-            torch.backends.mps.empty_cache()
+            torch.mps.empty_cache()
         elif args.gpu_type == 'cuda':
             torch.cuda.empty_cache()
     print("\nExperiment completed successfully!")
+
+
+def plot_graph(true, preds=None):
+    print("Plotting results...")
+    plt.figure()
+    if preds is not None:
+        plt.plot(preds, label='Prediction', linewidth=2)
+    plt.plot(true, label='GroundTruth', linewidth=2)
+    plt.legend()
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -266,7 +279,7 @@ if __name__ == '__main__':
     np.random.seed(fix_seed)
 
     run_experiment(
-        train_epochs=5,
+        train_epochs=2,
         batch_size=64,
         learning_rate=0.001,
         pred_len=14,
