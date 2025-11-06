@@ -252,14 +252,13 @@ def run_experiment(**arg_overrides):
         # Testing
         print(f'>>>>>>>testing : {setting}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
         metrics, gt, preds = exp.test(setting)
-        plot_graph(gt, preds )
-
         # Clear cache
         if args.gpu_type == 'mps':
             torch.mps.empty_cache()
         elif args.gpu_type == 'cuda':
             torch.cuda.empty_cache()
     print("\nExperiment completed successfully!")
+    return metrics, gt, preds
 
 
 def plot_graph(true, preds=None):
@@ -278,10 +277,12 @@ if __name__ == '__main__':
     torch.manual_seed(fix_seed)
     np.random.seed(fix_seed)
 
-    run_experiment(
+    metrics, gt, preds = run_experiment(
         train_epochs=2,
         batch_size=64,
         learning_rate=0.001,
         pred_len=14,
         seq_len=60
     )
+    plot_graph(gt, preds)
+
