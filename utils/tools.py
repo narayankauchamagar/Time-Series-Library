@@ -84,12 +84,16 @@ def visual(true, preds=None, name='./pic/test.png'):
     """
     Results visualization
     """
+    print('Saving results figure to {} ...'.format(name))
     plt.figure()
     if preds is not None:
         plt.plot(preds, label='Prediction', linewidth=2)
     plt.plot(true, label='GroundTruth', linewidth=2)
     plt.legend()
     plt.savefig(name, bbox_inches='tight')
+    # Show the plot
+    print('Plotting results figure ...')
+    plt.show()
 
 
 def adjustment(gt, pred):

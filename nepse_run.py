@@ -272,11 +272,3 @@ if __name__ == '__main__':
         pred_len=14,
         seq_len=60
     )
-
-    run_experiment(
-        train_epochs=5,
-        batch_size=64,
-        learning_rate=0.0001,
-        pred_len=14,
-        seq_len=60
-    )
