@@ -24,7 +24,7 @@ def create_timesnet_args(**overrides):
         # Data loader
         data='NEPSE',
         root_path='./dataset/nepse/',
-        data_path='nepse.csv',
+        data_path='nepse_filtered.csv',
         # forecasting task, options:[M, S, MS];
         # M:multivariate predict multivariate,
         # S:univariate predict univariate,
@@ -63,11 +63,11 @@ def create_timesnet_args(**overrides):
         # For Inception
         num_kernels=6,
         # Encoder Input size
-        enc_in=6,
+        enc_in=4,
         # Decoder Input Size
-        dec_in=6,
+        dec_in=4,
         # Output size
-        c_out=6,
+        c_out=4,
         # Dimension of model
         d_model=128,
         # No of heads
@@ -127,7 +127,7 @@ def create_timesnet_args(**overrides):
         ## GPU
         use_gpu=True,
         gpu=0,
-        gpu_type='cuda',
+        gpu_type='mps',
         use_multi_gpu=False,
         devices='0,1',
 
@@ -277,9 +277,7 @@ if __name__ == '__main__':
 
     metrics, gt, preds = run_experiment(
         train_epochs=2,
-        batch_size=64,
         learning_rate=0.001,
-        pred_len=14,
         seq_len=60
     )
     plot_graph(gt, preds)
