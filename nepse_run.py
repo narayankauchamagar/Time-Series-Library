@@ -242,7 +242,7 @@ def run_experiment(**arg_overrides):
         args.factor,
         args.embed,
         args.distil,
-        args.des, ii)
+        args.des, 1)
 
     # Training
     print(f'>>>>>>>start training : {setting}>>>>>>>>>>>>>>>>>>>>>>>>>>')

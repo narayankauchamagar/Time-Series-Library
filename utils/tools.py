@@ -92,7 +92,6 @@ def visual(true, preds=None, name='./pic/test.png'):
     plt.legend()
     # Show the plot
     print('Plotting results figure ...')
-    plt.show()
     plt.savefig(name, bbox_inches='tight')
 
 
