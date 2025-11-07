@@ -12,7 +12,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
-def create_timesnet_args(**overrides):
+def create_timesnet_args(print_args_flag=False, **overrides):
     # Create Namespace with all default values from the parser
     args = argparse.Namespace(
         # Basic config
@@ -208,13 +208,14 @@ def create_timesnet_args(**overrides):
         args.device_ids = [int(id_) for id_ in device_ids]
         args.gpu = args.device_ids[0]
 
-    print_args(args)
+    if print_args_flag:
+        print_args(args)
     return args
 
 
-def run_experiment(**arg_overrides):
+def run_experiment(print_args_flag=False, **arg_overrides):
     # Create args with overrides
-    args = create_timesnet_args(**arg_overrides)
+    args = create_timesnet_args(print_args_flag=print_args_flag, **arg_overrides)
 
     # Import your experiment class
     from exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
@@ -268,6 +269,9 @@ def plot_graph(true, preds=None):
     plt.legend()
     plt.show()
 
+def print_metrics(metrics):
+    mae, mse, rmse, mape, mspe, crps = metrics
+    print('mae:{}, mse:{}, rmse:{}, mape:{}, mspe:{}, crps:{}'.format(mae, mse, rmse, mape, mspe, crps))
 
 if __name__ == '__main__':
     fix_seed = 2021
@@ -276,9 +280,12 @@ if __name__ == '__main__':
     np.random.seed(fix_seed)
 
     metrics, gt, preds = run_experiment(
+        print_args_flag=False,
         train_epochs=2,
         learning_rate=0.001,
         seq_len=60
     )
+    print_metrics(metrics)
+
     plot_graph(gt, preds)
 

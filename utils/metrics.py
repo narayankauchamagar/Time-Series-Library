@@ -1,4 +1,5 @@
 import numpy as np
+import properscoring as ps
 
 
 def RSE(pred, true):
@@ -37,5 +38,6 @@ def metric(pred, true):
     rmse = RMSE(pred, true)
     mape = MAPE(pred, true)
     mspe = MSPE(pred, true)
+    crps = ps.crps_ensemble(true, pred)
 
-    return mae, mse, rmse, mape, mspe
+    return mae, mse, rmse, mape, mspe, crps
