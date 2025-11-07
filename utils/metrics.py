@@ -39,5 +39,6 @@ def metric(pred, true):
     mape = MAPE(pred, true)
     mspe = MSPE(pred, true)
     crps = ps.crps_ensemble(true, pred)
+    mean_crps = np.mean(crps_scores)
 
-    return mae, mse, rmse, mape, mspe, crps
+    return mae, mse, rmse, mape, mspe, mean_crps
